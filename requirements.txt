@@ -1,0 +1,17 @@
+# Dependências simplificadas para API de Lista de Tarefas
+# =======================================================
+
+# Framework web principal
+Flask==3.0.0
+
+# Autenticação e segurança
+PyJWT==2.8.0              # JSON Web Tokens
+Werkzeug==3.0.1           # Utilitários web (inclui hash de senhas)
+
+# CORS (Cross-Origin Resource Sharing)
+Flask-CORS==4.0.0         # Permite requisições de diferentes origens
+
+# Documentação Swagger/OpenAPI
+flasgger==0.9.7.1         # Geração de documentação OpenAPI a partir de docstrings
+
+# SQLite já vem com Python - não precisa instalar separadamente
