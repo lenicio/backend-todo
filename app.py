@@ -72,8 +72,7 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS tarefas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulo TEXT NOT NULL,
-            descricao TEXT,
+            descricao TEXT NOT NULL,
             concluida BOOLEAN DEFAULT 0,
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -364,7 +363,6 @@ def listar_tarefas(usuario_atual):
         for tarefa in tarefas:
             tarefas_lista.append({
                 'id': tarefa['id'],
-                'titulo': tarefa['titulo'],
                 'descricao': tarefa['descricao'],
                 'concluida': bool(tarefa['concluida']),
                 'data_criacao': tarefa['data_criacao'],
@@ -388,7 +386,7 @@ def criar_tarefa(usuario_atual):
     tags:
       - Tarefas
     summary: Cria uma nova tarefa para o usuário autenticado.
-    description: Adiciona uma nova tarefa à lista do usuário. O título é obrigatório. Requer autenticação.
+    description: Adiciona uma nova tarefa à lista do usuário. A descrição é obrigatória. Requer autenticação.
     security:
       - BearerAuth: []
     requestBody:
@@ -398,19 +396,16 @@ def criar_tarefa(usuario_atual):
           schema:
             type: object
             properties:
-              titulo:
-                type: string
-                example: "Comprar pão"
               descricao:
                 type: string
-                example: "Ir à padaria da esquina."
+                example: "Comprar pão na padaria da esquina"
             required:
-              - titulo
+              - descricao
     responses:
       201:
         description: Tarefa criada com sucesso.
       400:
-        description: Título da tarefa não fornecido.
+        description: Descrição da tarefa não fornecida.
       401:
         description: Token de autenticação inválido ou ausente.
       500:
@@ -419,13 +414,13 @@ def criar_tarefa(usuario_atual):
     try:
         dados = request.get_json()
         
-        if not dados or not dados.get('titulo'):
-            return jsonify({'erro': 'Título é obrigatório!'}), 400
+        if not dados or not dados.get('descricao'):
+            return jsonify({'erro': 'Descrição é obrigatória!'}), 400
         
         conn = get_db_connection()
         cursor = conn.execute(
-            'INSERT INTO tarefas (titulo, descricao, usuario_id) VALUES (?, ?, ?)',
-            (dados['titulo'], dados.get('descricao', ''), usuario_atual['id'])
+            'INSERT INTO tarefas (descricao, usuario_id) VALUES (?, ?)',
+            (dados['descricao'], usuario_atual['id'])
         )
         
         tarefa_id = cursor.lastrowid
@@ -437,7 +432,6 @@ def criar_tarefa(usuario_atual):
             'mensagem': 'Tarefa criada com sucesso!',
             'tarefa': {
                 'id': nova_tarefa['id'],
-                'titulo': nova_tarefa['titulo'],
                 'descricao': nova_tarefa['descricao'],
                 'concluida': bool(nova_tarefa['concluida']),
                 'data_criacao': nova_tarefa['data_criacao'],
@@ -491,7 +485,6 @@ def obter_tarefa(usuario_atual, tarefa_id):
         return jsonify({
             'tarefa': {
                 'id': tarefa['id'],
-                'titulo': tarefa['titulo'],
                 'descricao': tarefa['descricao'],
                 'concluida': bool(tarefa['concluida']),
                 'data_criacao': tarefa['data_criacao'],
@@ -511,7 +504,7 @@ def atualizar_tarefa(usuario_atual, tarefa_id):
     tags:
       - Tarefas
     summary: Atualiza uma tarefa existente.
-    description: Modifica o título, a descrição ou o status de conclusão de uma tarefa. Requer autenticação.
+    description: Modifica a descrição ou o status de conclusão de uma tarefa. Requer autenticação.
     security:
       - BearerAuth: []
     parameters:
@@ -528,12 +521,9 @@ def atualizar_tarefa(usuario_atual, tarefa_id):
           schema:
             type: object
             properties:
-              titulo:
-                type: string
-                example: "Comprar leite integral"
               descricao:
                 type: string
-                example: "Não esquecer que é o integral."
+                example: "Comprar leite integral na padaria"
               concluida:
                 type: boolean
                 example: false
@@ -566,20 +556,19 @@ def atualizar_tarefa(usuario_atual, tarefa_id):
             return jsonify({'erro': 'Dados não fornecidos!'}), 400
         
         # Preparar campos para atualização
-        titulo = dados.get('titulo', tarefa['titulo'])
         descricao = dados.get('descricao', tarefa['descricao'])
         concluida = dados.get('concluida', tarefa['concluida'])
         
-        if 'titulo' in dados and not dados['titulo']:
+        if 'descricao' in dados and not dados['descricao']:
             conn.close()
-            return jsonify({'erro': 'Título não pode estar vazio!'}), 400
+            return jsonify({'erro': 'Descrição não pode estar vazia!'}), 400
         
         # Atualizar tarefa
         conn.execute(
             '''UPDATE tarefas 
-               SET titulo = ?, descricao = ?, concluida = ?, data_atualizacao = ? 
+               SET descricao = ?, concluida = ?, data_atualizacao = ? 
                WHERE id = ? AND usuario_id = ?''',
-            (titulo, descricao, concluida, datetime.datetime.now(datetime.timezone.utc).isoformat(), tarefa_id, usuario_atual['id'])
+            (descricao, concluida, datetime.datetime.now(datetime.timezone.utc).isoformat(), tarefa_id, usuario_atual['id'])
         )
         
         # Buscar tarefa atualizada
@@ -591,7 +580,6 @@ def atualizar_tarefa(usuario_atual, tarefa_id):
             'mensagem': 'Tarefa atualizada com sucesso!',
             'tarefa': {
                 'id': tarefa_atualizada['id'],
-                'titulo': tarefa_atualizada['titulo'],
                 'descricao': tarefa_atualizada['descricao'],
                 'concluida': bool(tarefa_atualizada['concluida']),
                 'data_criacao': tarefa_atualizada['data_criacao'],
@@ -777,7 +765,7 @@ def serve_openapi_spec():
                 "post": {
                     "tags": ["Tarefas"],
                     "summary": "Cria uma nova tarefa para o usuário autenticado.",
-                    "description": "Adiciona uma nova tarefa à lista do usuário. O título é obrigatório. Requer autenticação.",
+                    "description": "Adiciona uma nova tarefa à lista do usuário. A descrição é obrigatória. Requer autenticação.",
                     "security": [{"BearerAuth": []}],
                     "requestBody": {
                         "required": True,
@@ -786,17 +774,16 @@ def serve_openapi_spec():
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "titulo": {"type": "string", "example": "Comprar pão"},
-                                        "descricao": {"type": "string", "example": "Ir à padaria da esquina."}
+                                        "descricao": {"type": "string", "example": "Comprar pão na padaria da esquina"}
                                     },
-                                    "required": ["titulo"]
+                                    "required": ["descricao"]
                                 }
                             }
                         }
                     },
                     "responses": {
                         "201": {"description": "Tarefa criada com sucesso."},
-                        "400": {"description": "Título da tarefa não fornecido."},
+                        "400": {"description": "Descrição da tarefa não fornecida."},
                         "401": {"description": "Token de autenticação inválido ou ausente."},
                         "500": {"description": "Erro interno do servidor."}
                     }
@@ -825,7 +812,7 @@ def serve_openapi_spec():
                 "put": {
                     "tags": ["Tarefas"],
                     "summary": "Atualiza uma tarefa existente.",
-                    "description": "Modifica o título, a descrição ou o status de conclusão de uma tarefa. Requer autenticação.",
+                    "description": "Modifica a descrição ou o status de conclusão de uma tarefa. Requer autenticação.",
                     "security": [{"BearerAuth": []}],
                     "parameters": [{
                         "name": "tarefa_id",
@@ -841,8 +828,7 @@ def serve_openapi_spec():
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "titulo": {"type": "string", "example": "Comprar leite integral"},
-                                        "descricao": {"type": "string", "example": "Não esquecer que é o integral."},
+                                        "descricao": {"type": "string", "example": "Comprar leite integral na padaria"},
                                         "concluida": {"type": "boolean", "example": False}
                                     }
                                 }
